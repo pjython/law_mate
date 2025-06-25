@@ -1,0 +1,50 @@
+/venv/
+/.vscode/
+/vectordb/
+/secrets/
+
+# Python 관련 파일들
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# 환경 변수 파일
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# 로그 파일
+*.log
+logs/
+
+# IDE 파일들
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# macOS 파일들
+.DS_Store
+
+# 임시 파일들
+*.tmp
+*.temp
