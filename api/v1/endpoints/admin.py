@@ -6,7 +6,7 @@
 import os
 from fastapi import APIRouter, Depends, BackgroundTasks
 
-from core.config.settings import get_settings
+from core.config import get_settings
 from core.logging.config import get_logger
 from core.dependencies import get_rag_orchestrator
 from api.schemas.requests import RebuildRequest

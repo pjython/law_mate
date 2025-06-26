@@ -6,7 +6,7 @@ RAG 시스템의 모든 컴포넌트를 조율하고 관리하는 중앙 서비�
 import time
 from typing import Dict, Any, List, Optional
 
-from core.config.settings import get_settings
+from core.config import get_settings
 from core.logging.config import get_logger
 from services.document.processor import DocumentProcessor
 from services.search.hybrid_search import HybridSearchService

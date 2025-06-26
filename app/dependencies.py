@@ -12,7 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 
-from core.config.settings import get_settings
+from core.config import get_settings
 from core.logging.config import get_logger
 from core.dependencies import set_rag_orchestrator
 from services.rag.orchestrator import RAGOrchestrator

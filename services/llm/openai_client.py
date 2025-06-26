@@ -4,7 +4,7 @@ OpenAI API를 통한 답변 생성을 담당합니다.
 """
 
 from typing import List, Dict, Any
-from core.config.settings import get_settings
+from core.config import get_settings
 from core.logging.config import get_logger
 
 logger = get_logger(__name__)

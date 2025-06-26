@@ -27,8 +27,8 @@ help:
 	@echo "  make reset     - 데이터베이스 초기화"
 	@echo ""
 	@echo "🌍 환경 설정:"
-	@echo "  make dev-env   - 개발 환경으로 설정"
-	@echo "  make prod-env  - 운영 환경으로 설정"
+	@echo "  make dev-env   - 개발 환경으로 설정 (.env.dev → .env)"
+	@echo "  make prod-env  - 운영 환경으로 설정 (.env.prod → .env)"
 
 # 프로젝트 초기 설정
 setup: env install
@@ -42,6 +42,14 @@ env:
 	else \
 		echo "✅ .env 파일이 이미 존재합니다."; \
 	fi
+	@if [ ! -f .env.dev ]; then \
+		cp .env .env.dev; \
+		echo "📝 .env.dev 파일이 생성되었습니다."; \
+	fi
+	@if [ ! -f .env.prod ]; then \
+		cp .env .env.prod; \
+		echo "📝 .env.prod 파일이 생성되었습니다."; \
+	fi
 
 # 의존성 설치
 install:
@@ -52,14 +60,22 @@ install:
 # 개발 환경 설정
 dev-env:
 	@echo "🔧 개발 환경으로 설정 중..."
-	@echo "ENVIRONMENT=development" > .env.local
-	@echo "✅ 개발 환경 설정 완료"
+	@if [ ! -f .env.dev ]; then \
+		echo "❌ .env.dev 파일이 없습니다. 먼저 make setup을 실행하세요."; \
+		exit 1; \
+	fi
+	@cp .env.dev .env
+	@echo "✅ 개발 환경 설정 완료 (.env.dev → .env)"
 
 # 운영 환경 설정
 prod-env:
 	@echo "🚀 운영 환경으로 설정 중..."
-	@echo "ENVIRONMENT=production" > .env.local
-	@echo "✅ 운영 환경 설정 완료"
+	@if [ ! -f .env.prod ]; then \
+		echo "❌ .env.prod 파일이 없습니다. 먼저 make setup을 실행하세요."; \
+		exit 1; \
+	fi
+	@cp .env.prod .env
+	@echo "✅ 운영 환경 설정 완료 (.env.prod → .env)"
 
 # 개발 서버 실행 (병렬)
 dev: dev-env
@@ -72,7 +88,6 @@ dev: dev-env
 # API 서버 실행 (새 구조)
 api:
 	@echo "🔧 API 서버 시작 중..."
-	@if [ -f .env.local ]; then export $(cat .env.local | xargs); fi && \
 	python -m app.main
 
 # Streamlit 클라이언트 실행
@@ -135,7 +150,7 @@ status:
 	@echo "   - Python: $(shell python --version 2>&1)"
 	@echo "   - 가상환경: $(shell echo $$VIRTUAL_ENV | sed 's/.*\///' || echo '없음')"
 	@echo "   - .env 파일: $(shell [ -f .env ] && echo '✅ 존재' || echo '❌ 없음')"
-	@echo "   - 환경 설정: $(shell [ -f .env.local ] && cat .env.local || echo '기본값')"
+	@echo "   - 환경 설정: $(shell [ -f .env ] && grep ENVIRONMENT .env || echo 'ENVIRONMENT=development')"
 	@echo "   - vectordb: $(shell [ -d vectordb ] && echo '✅ 존재' || echo '❌ 없음')"
 	@echo "   - 구조: 리팩토링된 계층형 아키텍처"
 

@@ -1,4 +1,6 @@
-"""
-설정 관리 패키지
-환경별 설정과 설정 팩토리를 제공합니다.
-""" 
+"""설정 모듈"""
+
+# config.py에서 직접 import
+from .config import settings, get_settings
+
+__all__ = ["settings", "get_settings"] 

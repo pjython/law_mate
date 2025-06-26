@@ -3,7 +3,7 @@ Law Mate FastAPI 애플리케이션 진입점
 """
 
 import uvicorn
-from core.config.settings import get_settings
+from core.config import get_settings
 from core.logging.config import setup_logging, get_logger
 from app.dependencies import create_app
 

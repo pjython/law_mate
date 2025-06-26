@@ -4,7 +4,7 @@ ChromaDB를 사용한 벡터 데이터베이스 관리를 담당합니다.
 """
 
 from typing import List, Dict, Any
-from core.config.settings import get_settings
+from core.config import get_settings
 from core.logging.config import get_logger
 
 logger = get_logger(__name__)
