@@ -13,6 +13,7 @@ class LawApi:
     법제처 API를 통한 법률 문서 수집 클래스
     법령, 판례 등을 검색하고 수집하는 기능을 제공합니다.
     """
+    # TODO Task 구현 필요
 
     def __init__(self):
         self.settings = get_settings()

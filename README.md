@@ -7,7 +7,7 @@ Law Mate는 Google Gemini와 OpenAI GPT를 활용한 전문 법률 상담 AI입�
 ## 🚀 주요 기능
 
 ### 핵심 기능
-- **Google Gemini 2.5 Flash 기반 답변 생성**: 전문적이고 정확한 법률 상담
+- **LLM 기반 답변 생성**: 전문적이고 정확한 법률 상담
 - **하이브리드 검색**: BM25 + 벡터 검색으로 최적의 문서 검색
 - **LangChain Memory 기반 대화 관리**: 대화 맥락을 기억하는 지능적 연속 대화
 - **실시간 대화**: 세션 기반 연속 대화 지원
@@ -22,7 +22,7 @@ Law Mate는 Google Gemini와 OpenAI GPT를 활용한 전문 법률 상담 AI입�
 
 ## 📋 시스템 요구사항
 
-- Python 3.11+
+- Python 3.10+
 - Google Gemini API 키 또는 OpenAI API 키
 - 8GB+ RAM 권장
 
