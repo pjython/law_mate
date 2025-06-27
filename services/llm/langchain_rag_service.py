@@ -88,14 +88,20 @@ class LangChainRAGService:
         #     )
         #     logger.info("✅ LangChain ChatOpenAI 초기화 완료")
         if self.settings.GEMINI_API_KEY:
-            self.llm = ChatGoogleGenerativeAI(
+            self.classification_llm = ChatGoogleGenerativeAI(
                 model=self.settings.GEMINI_MODEL,
                 google_api_key=self.settings.GEMINI_API_KEY,
-                temperature=self.settings.TEMPERATURE,
+                temperature=self.settings.CLASSIFICATION_TEMPERATURE,
+            )
+            self.answer_llm = ChatGoogleGenerativeAI(
+                model=self.settings.GEMINI_MODEL,
+                google_api_key=self.settings.GEMINI_API_KEY,
+                temperature=self.settings.ANSWER_TEMPERATURE,
             )
             logger.info("✅ LangChain Gemini 초기화 완료")
         else:
-            self.llm = None
+            self.classification_llm = None
+            self.answer_llm = None
             logger.warning("⚠️ OpenAI API 키가 설정되지 않았습니다.")
 
         # 검색 서비스 초기화
@@ -163,7 +169,7 @@ class LangChainRAGService:
 
     def _setup_rag_chain(self):
         """완전한 RAG 체인 구성"""
-        if not self.llm:
+        if not self.classification_llm or not self.answer_llm:
             self.rag_chain = None
             return
 
@@ -172,7 +178,7 @@ class LangChainRAGService:
         answer_parser = StrOutputParser()
 
         # 1. 질문 분류 체인
-        classification_chain = self.classification_prompt | self.llm | classification_parser
+        classification_chain = self.classification_prompt | self.classification_llm | classification_parser
 
         # 2. 문서 검색 함수
         async def retrieve_documents_async(classification_result: Dict[str, Any]) -> Dict[str, Any]:
@@ -260,7 +266,7 @@ class LangChainRAGService:
             }
 
         # 4. 최종 답변 생성 체인
-        answer_chain = self.answer_prompt | self.llm | answer_parser
+        answer_chain = self.answer_prompt | self.answer_llm | answer_parser
 
         # 5. 완전한 RAG 체인 구성 (단순화된 버전)
         self.classification_chain = classification_chain
@@ -275,7 +281,7 @@ class LangChainRAGService:
     ) -> Dict[str, Any]:
         """RAG 파이프라인으로 질문 처리 (Memory 통합)"""
         try:
-            if not self.llm:
+            if not self.classification_llm and not self.answer_llm:
                 return self._generate_fallback_response(query, context_info)
 
             logger.info(f"🚀 LangChain RAG 파이프라인 시작: '{query[:50]}...' (세션: {session_id})")
@@ -527,10 +533,10 @@ class LangChainRAGService:
         """파이프라인 정보 조회"""
         return {
             "pipeline_type": "langchain_full_rag_with_memory",
-            "llm_available": self.llm is not None,
-            "model": self.settings.OPENAI_MODEL if self.llm else None,
+            "llm_available": self.classification_llm is not None,
+            "model": self.settings.OPENAI_MODEL if self.classification_llm else None,
             "temperature": self.settings.TEMPERATURE,
-            "chain_configured": self.llm is not None,
+            "chain_configured": self.classification_llm is not None,
             "memory_enabled": True,
             "memory_sessions": len(self._memories),
             "components": {

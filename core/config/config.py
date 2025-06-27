@@ -37,7 +37,8 @@ class Settings(BaseSettings):
     # === OpenAI 설정 ===
     OPENAI_API_KEY: str = ""
     OPENAI_MODEL: str = "gpt-4o"
-    TEMPERATURE: float = 0.5
+    CLASSIFICATION_TEMPERATURE: float = 0.3
+    ANSWER_TEMPERATURE: float = 0.6
     # === Google Gemini 설정===
     GEMINI_MODEL: str = "gemini-2.5-flash"
     GEMINI_API_KEY: str = ""
