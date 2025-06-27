@@ -38,6 +38,9 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str = ""
     OPENAI_MODEL: str = "gpt-4o"
     TEMPERATURE: float = 0.5
+    # === Google Gemini 설정===
+    GEMINI_MODEL: str = "gemini-2.5-flash"
+    GEMINI_API_KEY: str = ""
 
     # === 서버 설정 ===
     DEBUG: bool = False
@@ -75,10 +78,28 @@ class Settings(BaseSettings):
     # === 스케줄러 설정 ===
     ENABLE_SCHEDULER: bool = True
 
-    # === 환경별 .env 파일 로딩 ===
-    model_config = SettingsConfigDict(
-        env_file=get_env_file(), env_file_encoding="utf-8", case_sensitive=True, extra="ignore"
-    )
+    # === Collector 설정 ===
+    LAW_API_USER_ID: str = ""
+
+    # === 환경별 .env 파일 로딩 (동적 로딩) ===
+    model_config = SettingsConfigDict(env_file_encoding="utf-8", case_sensitive=True, extra="ignore")
+
+    def __init__(self, **kwargs):
+        """초기화 시 동적으로 환경변수 파일 로드"""
+        # 현재 환경에 맞는 .env 파일 결정
+        env_file = get_env_file()
+
+        # 환경변수 파일이 존재하면 로드
+        if os.path.exists(env_file):
+            print(f"📄 [CONFIG] 환경변수 파일 로드: {env_file}")
+            from dotenv import load_dotenv
+
+            load_dotenv(env_file, override=True)  # override=True로 기존 환경변수 덮어쓰기
+        else:
+            print(f"⚠️ [CONFIG] 환경변수 파일 없음: {env_file}")
+
+        # 부모 클래스 초기화
+        super().__init__(**kwargs)
 
     @property
     def ALLOWED_ORIGINS(self) -> List[str]:
@@ -164,9 +185,8 @@ class Settings(BaseSettings):
         print(f"✅ [CONFIG] 설정 검증 완료")
 
 
-@lru_cache()
 def get_settings() -> Settings:
-    """설정 인스턴스 반환 (싱글톤 패턴)"""
+    """설정 인스턴스 반환 (환경 변경 시 새로운 인스턴스 생성)"""
     print("🚀 [CONFIG] Settings 인스턴스 생성")
     return Settings()
 

@@ -1,6 +1,7 @@
 """
 RAG 오케스트레이터
-RAG 시스템의 모든 컴포넌트를 조율하고 관리하는 중앙 서비스입니다.
+RAG 시스템의 컴포넌트들을 조율하는 중앙 서비스입니다.
+완전한 LangChain 파이프라인을 통해 사용자 쿼리를 처리합니다.
 """
 
 import time
@@ -10,17 +11,24 @@ from core.config import get_settings
 from core.logging.config import get_logger
 from services.document.processor import DocumentProcessor
 from services.search.hybrid_search import HybridSearchService
-from services.llm.openai_client import OpenAIService
+
+# LangChain RAG 서비스만 사용
+from services.llm.langchain_rag_service import LangChainRAGService
 from infrastructure.database.vector_store import VectorStore
 
-# 로깅 설정
+# 분리된 RAG 서비스들
+from services.rag.response_formatter import ResponseFormatter
+from services.rag.system_monitor import SystemMonitor
+
+# 대화 관리는 LangChain Memory가 처리
+
 logger = get_logger(__name__)
 
 
 class RAGOrchestrator:
     """
     RAG 오케스트레이터
-    모든 RAG 컴포넌트를 조율하고 사용자 쿼리를 처리합니다.
+    완전한 LangChain 파이프라인을 통해 질문 분류부터 답변 생성까지 처리합니다.
     """
 
     def __init__(self):
@@ -30,259 +38,228 @@ class RAGOrchestrator:
 
             self.settings = get_settings()
 
-            # 서비스 컴포넌트 초기화
+            # 핵심 서비스 컴포넌트 초기화
             self.vector_store = VectorStore()
             self.document_processor = DocumentProcessor()
-            self.llm_service = OpenAIService()
+            self.langchain_rag_service = LangChainRAGService()
             self.search_service = HybridSearchService(self.vector_store)
 
-            # 시스템 상태
-            self.is_initialized = False
-            self.documents_loaded = False
-            self.search_index_built = False
+            # 분리된 RAG 서비스들 초기화
+            self.response_formatter = ResponseFormatter()
+            self.system_monitor = SystemMonitor()
+
+            # 대화 관리는 LangChain Memory가 자동 처리
 
             logger.info("✅ RAG 오케스트레이터 초기화 완료")
 
         except Exception as e:
             logger.error(f"❌ RAG 오케스트레이터 초기화 오류: {str(e)}")
+            self.system_monitor.record_error(str(e), "initialization") if hasattr(self, "system_monitor") else None
             raise
 
     async def initialize(self) -> bool:
-        """시스템 초기화 및 문서 로드"""
+        """시스템 초기화"""
         try:
-            if self.is_initialized:
-                logger.info("ℹ️ 시스템이 이미 초기화되어 있습니다.")
-                return True
+            logger.info("📚 RAG 시스템 초기화 중...")
 
-            logger.info("📚 법률 문서 로드 및 처리 중...")
+            # 검색 서비스 초기화 (벡터 스토어는 생성자에서 이미 초기화됨)
+            if hasattr(self.search_service, "initialize"):
+                await self.search_service.initialize()
 
-            # 1. 문서 처리
-            success = await self.document_processor.process_documents()
-            if not success:
-                logger.error("❌ 문서 처리 실패")
-                return False
+            # 시스템 모니터 초기화 상태 설정
+            document_count = self.vector_store.get_document_count()
+            self.system_monitor.update_initialization_status(
+                is_initialized=True, documents_loaded=document_count, search_index_built=True
+            )
 
-            # 2. 벡터 스토어에 문서 추가
-            processed_chunks = self.document_processor.get_processed_chunks()
-            if processed_chunks:
-                vector_success = await self.vector_store.add_documents(processed_chunks)
-                if not vector_success:
-                    logger.error("❌ 벡터 DB 구축 실패")
-                    return False
-                self.documents_loaded = True
-
-                # 3. 검색 인덱스 구축
-                logger.info("🔄 검색 인덱스 구축 중...")
-                await self.search_service.build_indexes(processed_chunks)
-                self.search_index_built = True
-                logger.info("✅ 검색 인덱스 구축 완료")
-
-            # 4. 설정 검증
-            self._validate_configuration()
-
-            self.is_initialized = True
             logger.info("🎉 RAG 시스템 초기화 완료!")
-
-            # 시스템 정보 출력
-            self._log_system_info()
+            self.system_monitor.log_system_info()
 
             return True
 
         except Exception as e:
-            logger.error(f"❌ 시스템 초기화 오류: {str(e)}")
+            error_msg = f"시스템 초기화 오류: {str(e)}"
+            logger.error(f"❌ {error_msg}")
+            self.system_monitor.record_error(error_msg, "initialization")
             return False
 
-    async def process_query(self, user_query: str, user_id: Optional[str] = None) -> Dict[str, Any]:
+    async def process_query(
+        self, user_query: str, user_id: Optional[str] = None, session_id: Optional[str] = None
+    ) -> Dict[str, Any]:
         """
-        사용자 질문 처리
+        사용자 질문 처리 (완전한 LangChain RAG 파이프라인)
+        질문 분류 → 문서 검색 → 답변 생성이 하나의 체인으로 연결됨
+        대화 맥락은 LangChain Memory가 자동 관리
 
         Args:
             user_query: 사용자 질문
             user_id: 사용자 ID (선택사항)
+            session_id: 세션 ID (선택사항, 없으면 자동 생성)
 
         Returns:
             처리 결과 딕셔너리
         """
+        start_time = time.time()
+
         try:
-            if not self.is_initialized:
-                return self._create_error_response("시스템이 초기화되지 않았습니다. 잠시 후 다시 시도해주세요.")
+            logger.info(f"🚀 LangChain 파이프라인 질문 처리: '{user_query}' (세션: {session_id})")
 
-            start_time = time.time()
-            logger.info(f"🔍 질문 처리 시작: '{user_query}' (사용자: {user_id})")
+            # 세션 ID가 없으면 자동 생성 (UUID 기반)
+            if not session_id:
+                import uuid
 
-            # 1. 질문 분류 및 검증
-            logger.debug("📋 질문 분류 중...")
-            classification = await self._classify_query(user_query)
+                session_id = str(uuid.uuid4())
+                logger.debug(f"🆕 새 세션 ID 생성: {session_id}")
 
-            if not classification["is_legal"]:
-                return self._create_response(
-                    success=True,
-                    answer="죄송합니다. 법률 관련 질문만 답변할 수 있습니다. 법률 상담이 필요한 질문을 해주세요.",
-                    confidence=0.0,
-                    processing_time=time.time() - start_time,
-                    classification=classification,
-                    search_method="분류 단계에서 차단",
-                )
-
-            # 2. 하이브리드 검색 수행
-            logger.debug("🔍 하이브리드 검색 수행 중...")
-            retrieved_docs = await self.search_service.search(
-                query=user_query,
-                top_k=self.settings.TOP_K_DOCUMENTS,
-                similarity_threshold=self.settings.SIMILARITY_THRESHOLD,
-            )
-
-            if not retrieved_docs:
-                return self._create_response(
-                    success=True,
-                    answer="관련된 법률 정보를 찾을 수 없습니다. 다른 방식으로 질문해 주시거나 더 구체적인 내용을 포함해 주세요.",
-                    confidence=0.0,
-                    processing_time=time.time() - start_time,
-                    classification=classification,
-                    search_method="하이브리드 검색 결과 없음",
-                )
-
-            # 3. LLM을 통한 답변 생성
-            logger.debug("🤖 답변 생성 중...")
-            response = await self.llm_service.generate_legal_response(user_query, retrieved_docs)
+            # 완전한 LangChain RAG 파이프라인 실행 (Memory 자동 관리)
+            rag_result = await self.langchain_rag_service.process_query(query=user_query, session_id=session_id)
 
             processing_time = time.time() - start_time
-            logger.info(f"✅ 처리 완료 ({processing_time:.2f}초)")
+            logger.info(f"✅ LangChain 파이프라인 처리 완료 ({processing_time:.2f}초)")
 
-            return self._create_response(
-                success=True,
-                answer=response["answer"],
-                confidence=response["confidence"],
-                sources=self._format_sources(retrieved_docs),
-                processing_time=processing_time,
-                classification=classification,
-                search_method="하이브리드 검색 (BM25 + 벡터)",
-                retrieved_docs_count=len(retrieved_docs),
-            )
+            # 성능 메트릭 기록
+            self.system_monitor.record_query_performance(processing_time, success=True)
+
+            # 최종 응답에 세션 및 성능 정보 추가
+            rag_result["session_id"] = session_id
+            rag_result["processing_time"] = processing_time
+            rag_result["pipeline_type"] = "langchain_full_rag"
+
+            return rag_result
 
         except Exception as e:
-            logger.error(f"❌ 질문 처리 오류: {str(e)}")
-            return self._create_error_response(f"처리 중 오류가 발생했습니다: {str(e)}")
+            processing_time = time.time() - start_time
+            error_msg = f"질문 처리 오류: {str(e)}"
+            logger.error(f"❌ {error_msg}")
 
-    def get_system_status(self) -> Dict[str, Any]:
-        """시스템 상태 반환"""
+            self.system_monitor.record_error(error_msg, "query_processing")
+            self.system_monitor.record_query_performance(processing_time, success=False)
+
+            return self.response_formatter.create_error_response(error_msg, "QUERY_PROCESSING_ERROR", processing_time)
+
+    async def get_conversation_history(self, session_id: str) -> Dict[str, Any]:
+        """대화 기록 조회 (LangChain Memory에서)"""
         try:
-            document_count = 0
-            if self.documents_loaded:
-                document_count = self.vector_store.get_document_count()
+            # LangChain Memory에서 대화 기록 조회
+            memory_stats = self.langchain_rag_service.get_memory_stats(session_id)
 
-            return {
-                "is_initialized": self.is_initialized,
-                "documents_loaded": self.documents_loaded,
-                "search_index_built": self.search_index_built,
-                "document_count": document_count,
-                "search_method": "하이브리드 검색 (BM25 + 벡터)",
-                "vector_db_path": self.settings.VECTOR_DB_PATH,
-                "collection_name": self.settings.COLLECTION_NAME,
-                "embedding_model": self.settings.EMBEDDING_MODEL,
-                "llm_model": self.settings.OPENAI_MODEL,
-                "top_k": self.settings.TOP_K_DOCUMENTS,
-                "search_weights": {"bm25": self.settings.BM25_WEIGHT, "vector": self.settings.VECTOR_WEIGHT},
-            }
+            if memory_stats:
+                return {
+                    "success": True,
+                    "session_id": session_id,
+                    "messages": memory_stats.get("messages", []),
+                    "total_messages": memory_stats.get("message_count", 0),
+                    "context": {
+                        "session_id": session_id,
+                        "memory_type": memory_stats.get("memory_type", "ConversationBufferWindowMemory"),
+                    },
+                }
+            else:
+                return {"success": False, "error": "세션을 찾을 수 없습니다", "messages": [], "total_messages": 0, "context": {}}
 
         except Exception as e:
-            logger.error(f"❌ 시스템 상태 조회 오류: {str(e)}")
-            return {"is_initialized": False, "error": str(e)}
+            logger.error(f"❌ 대화 기록 조회 실패: {str(e)}")
+            return {"success": False, "error": str(e), "messages": [], "total_messages": 0, "context": {}}
 
-    async def rebuild_indexes(self, force_rebuild: bool = False) -> bool:
+    async def process_documents(self, data_path: str) -> Dict[str, Any]:
+        """문서 처리 및 인덱싱"""
+        try:
+            logger.info(f"📄 문서 처리 시작: {data_path}")
+
+            # 문서 처리
+            processed_docs = await self.document_processor.process_documents(data_path)
+
+            if not processed_docs:
+                return {"success": False, "message": "처리할 문서가 없습니다.", "processed_count": 0}
+
+            # 벡터 스토어에 추가
+            success = await self.vector_store.add_documents(processed_docs)
+
+            if success:
+                # 검색 인덱스 재구축
+                await self.search_service.rebuild_index()
+
+                # 시스템 상태 업데이트
+                document_count = self.vector_store.get_document_count()
+                self.system_monitor.update_initialization_status(
+                    is_initialized=True, documents_loaded=document_count, search_index_built=True
+                )
+
+                logger.info(f"✅ 문서 처리 완료: {len(processed_docs)}개")
+                return {
+                    "success": True,
+                    "message": f"{len(processed_docs)}개 문서가 성공적으로 처리되었습니다.",
+                    "processed_count": len(processed_docs),
+                }
+            else:
+                return {"success": False, "message": "문서 저장에 실패했습니다.", "processed_count": 0}
+
+        except Exception as e:
+            error_msg = f"문서 처리 오류: {str(e)}"
+            logger.error(f"❌ {error_msg}")
+            self.system_monitor.record_error(error_msg, "document_processing")
+            return {"success": False, "message": error_msg, "processed_count": 0}
+
+    async def rebuild_indexes(self) -> Dict[str, Any]:
         """인덱스 재구축"""
         try:
             logger.info("🔄 인덱스 재구축 시작...")
 
-            if not force_rebuild and self.is_initialized:
-                logger.warning("⚠️ 시스템이 이미 초기화되어 있습니다. force_rebuild=True로 강제 재구축하세요.")
-                return False
+            # 검색 인덱스 재구축 (HybridSearchService의 rebuild_index 메서드 사용)
+            await self.search_service.rebuild_index()
 
-            # 기존 상태 초기화
-            self.is_initialized = False
-            self.documents_loaded = False
-            self.search_index_built = False
+            # 시스템 상태 업데이트
+            document_count = self.vector_store.get_document_count()
+            self.system_monitor.update_initialization_status(
+                is_initialized=True, documents_loaded=document_count, search_index_built=True
+            )
 
-            # 재초기화
-            success = await self.initialize()
-
-            if success:
-                logger.info("✅ 인덱스 재구축 완료")
-            else:
-                logger.error("❌ 인덱스 재구축 실패")
-
-            return success
+            logger.info("✅ 인덱스 재구축 완료")
+            return {"success": True, "message": "인덱스가 성공적으로 재구축되었습니다."}
 
         except Exception as e:
-            logger.error(f"❌ 인덱스 재구축 오류: {str(e)}")
-            return False
+            error_msg = f"인덱스 재구축 오류: {str(e)}"
+            logger.error(f"❌ {error_msg}")
+            self.system_monitor.record_error(error_msg, "index_rebuild")
+            return {"success": False, "message": error_msg}
 
-    # === 내부 헬퍼 메서드들 ===
+    def get_system_status(self) -> Dict[str, Any]:
+        """시스템 상태 조회"""
+        try:
+            return self.system_monitor.get_system_status(self.vector_store)
+        except Exception as e:
+            logger.error(f"❌ 시스템 상태 조회 실패: {str(e)}")
+            return {"status": "error", "message": str(e)}
 
-    async def _classify_query(self, query: str) -> Dict[str, Any]:
-        """질문 분류 (임시 구현)"""
-        # TODO: 실제 분류기 구현
-        return {"is_legal": True, "category": "general", "confidence": 0.8}
+    def get_service_statistics(self) -> Dict[str, Any]:
+        """서비스 통계 조회"""
+        try:
+            return self.conversation_service.get_service_statistics()
+        except Exception as e:
+            logger.error(f"❌ 서비스 통계 조회 실패: {str(e)}")
+            return {"error": str(e)}
 
-    def _validate_configuration(self) -> None:
+    async def cleanup(self) -> None:
+        """리소스 정리"""
+        try:
+            logger.info("🧹 RAG 시스템 정리 중...")
+            # 필요한 정리 작업 수행
+            logger.info("✅ RAG 시스템 정리 완료")
+        except Exception as e:
+            logger.error(f"❌ 정리 작업 실패: {str(e)}")
+
+    def _validate_configuration(self) -> bool:
         """설정 검증"""
-        # 가중치 합계 검증은 이미 settings.py에서 수행됨
-        logger.debug("✅ 설정 검증 완료")
+        try:
+            required_settings = ["OPENAI_API_KEY", "EMBEDDING_MODEL", "TOP_K_DOCUMENTS", "SIMILARITY_THRESHOLD"]
 
-    def _log_system_info(self) -> None:
-        """시스템 정보 로깅"""
-        status = self.get_system_status()
-        logger.info("📊 시스템 정보:")
-        logger.info(f"   - 문서 수: {status.get('document_count', 0)}")
-        logger.info(f"   - 검색 방법: {status.get('search_method', 'unknown')}")
-        logger.info(f"   - 임베딩 모델: {status.get('embedding_model', 'unknown')}")
-        logger.info(f"   - LLM 모델: {status.get('llm_model', 'unknown')}")
+            for setting in required_settings:
+                if not hasattr(self.settings, setting):
+                    logger.error(f"❌ 필수 설정 누락: {setting}")
+                    return False
 
-    def _create_response(
-        self,
-        success: bool,
-        answer: str,
-        confidence: float = 0.0,
-        sources: List[Dict] = None,
-        processing_time: float = 0.0,
-        classification: Dict = None,
-        search_method: str = None,
-        retrieved_docs_count: int = 0,
-    ) -> Dict[str, Any]:
-        """표준 응답 생성"""
-        return {
-            "success": success,
-            "answer": answer,
-            "confidence": confidence,
-            "sources": sources or [],
-            "processing_time": processing_time,
-            "classification": classification,
-            "search_method": search_method,
-            "retrieved_docs_count": retrieved_docs_count,
-        }
+            return True
 
-    def _create_error_response(self, error_message: str) -> Dict[str, Any]:
-        """오류 응답 생성"""
-        return {
-            "success": False,
-            "error": error_message,
-            "answer": "처리 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.",
-            "confidence": 0.0,
-            "sources": [],
-            "processing_time": 0.0,
-        }
-
-    def _format_sources(self, retrieved_docs: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """검색된 문서를 소스 형태로 포맷팅"""
-        sources = []
-        for i, doc in enumerate(retrieved_docs):
-            sources.append(
-                {
-                    "source": doc.get("source", f"문서 {i+1}"),
-                    "content_preview": doc.get("content", "")[:200] + "...",
-                    "hybrid_score": doc.get("hybrid_score", 0.0),
-                    "bm25_score": doc.get("bm25_score", 0.0),
-                    "vector_score": doc.get("vector_score", 0.0),
-                }
-            )
-        return sources
+        except Exception as e:
+            logger.error(f"❌ 설정 검증 실패: {str(e)}")
+            return False

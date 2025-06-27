@@ -1,236 +1,290 @@
-# ⚖️ Law Mate - AI 법률 상담 시스템
+# Law Mate 🏛️
 
-LLM과 하이브리드 검색 기반의 개인 법률 상담 AI 시스템입니다. 사용자의 자연어 질문에 대해 관련 법률 문서를 검색하고, RAG(Retrieval-Augmented Generation) 구조를 통해 신뢰할 수 있는 법률 자문 응답을 제공합니다.
+**Google Gemini & OpenAI 기반 지능형 법률 상담 AI 시스템**
 
-## 🎯 주요 기능
+Law Mate는 Google Gemini와 OpenAI GPT를 활용한 전문 법률 상담 AI입니다. 하이브리드 검색과 LangChain 기반 맥락 분석을 통해 정확하고 맥락적인 법률 조언을 제공합니다.
 
-- 📝 **자연어 질문 처리**: 일반적인 언어로 법률 질문 가능
-- 🔍 **하이브리드 검색**: BM25 키워드 + 벡터 의미 검색 결합
-- 🤖 **AI 법률 상담**: GPT-4o 기반 구조화된 법률 자문 제공
-- 🛡️ **질문 필터링**: 법률 외 질문은 정중하게 안내
-- 📊 **신뢰도 지표**: 응답의 신뢰도 및 참조 문서 표시
-- 💬 **분리형 아키텍처**: FastAPI 백엔드 + Streamlit 프론트엔드
+## 🚀 주요 기능
 
-## 🏗️ 시스템 아키텍처
+### 핵심 기능
+- **Google Gemini 2.5 Flash 기반 답변 생성**: 전문적이고 정확한 법률 상담
+- **하이브리드 검색**: BM25 + 벡터 검색으로 최적의 문서 검색
+- **LangChain Memory 기반 대화 관리**: 대화 맥락을 기억하는 지능적 연속 대화
+- **실시간 대화**: 세션 기반 연속 대화 지원
+- **법제처 API 연동**: 실시간 법률 문서 수집 및 업데이트
 
-### **계층형 구조**
-```
-📁 law_mate/
-├── 📱 app/                           # 애플리케이션 코어
-│   ├── main.py                       # FastAPI 진입점
-│   └── dependencies.py               # 의존성 주입
-│
-├── 🌐 api/                           # API 레이어
-│   ├── v1/endpoints/                 # 엔드포인트
-│   │   ├── health.py                 # 헬스체크
-│   │   ├── query.py                  # 질문 처리
-│   │   └── admin.py                  # 관리 기능
-│   └── schemas/                      # 요청/응답 스키마
-│
-├── ⚙️ core/                          # 핵심 설정
-│   ├── config/                       # 환경별 설정
-│   └── logging/                      # 로깅 시스템
-│
-├── 🔧 services/                      # 비즈니스 로직
-│   ├── rag/orchestrator.py          # RAG 오케스트레이터
-│   ├── search/hybrid_search.py      # 하이브리드 검색
-│   ├── llm/openai_client.py         # OpenAI 서비스
-│   └── document/processor.py        # 문서 처리
-│
-├── 🗄️ infrastructure/               # 인프라 레이어
-│   └── database/vector_store.py     # 벡터 스토어
-│
-├── 📄 data/sample_laws/             # 법률 문서
-└── 📱 streamlit_client.py           # 프론트엔드
-```
+### 법률 분야
+- 부동산 (임대차, 전세, 매매)
+- 근로/노동 (해고, 임금, 근로계약)
+- 민사 (계약, 손해배상, 채무)
+- 가족법 (이혼, 상속, 양육)
+- 형사법 (고발, 신고, 범죄)
 
-### **분리된 서비스 구조**
-```
-📱 프론트엔드 (Streamlit)  ←→  ⚙️ 백엔드 (FastAPI)
-    - 사용자 인터페이스           - AI 처리 엔진
-    - API 클라이언트             - 하이브리드 검색
-    - 세션 관리                  - 데이터 파이프라인
-```
+## 📋 시스템 요구사항
 
-## 🛠️ 기술 스택
+- Python 3.11+
+- Google Gemini API 키 또는 OpenAI API 키
+- 8GB+ RAM 권장
 
-- **언어**: Python 3.10+
-- **백엔드**: FastAPI, Uvicorn
-- **프론트엔드**: Streamlit
-- **LLM**: OpenAI GPT-4o
-- **검색**: BM25 + Sentence Transformers
-- **벡터DB**: ChromaDB
-- **형태소 분석**: Kiwi (한국어 특화)
-- **설정 관리**: Pydantic Settings
-- **로깅**: 중앙화된 로깅 시스템
+## ⚡ 빠른 시작
 
-## 🚀 설치 및 실행
-
-### 1. 환경 설정
+### 1. 설치
 ```bash
-# 저장소 클론
-git clone <repository>
+git clone https://github.com/your-repo/law_mate.git
 cd law_mate
-
-# 가상환경 생성 및 활성화
 python -m venv venv
 source venv/bin/activate  # Windows: venv\Scripts\activate
-
-# 의존성 설치
 pip install -r requirements.txt
 ```
 
-### 2. 환경변수 설정
+### 2. 환경 설정
 ```bash
-# .env 파일 생성 (env.example 참고)
 cp env.example .env
-
-# OpenAI API 키 설정
-echo "OPENAI_API_KEY=your_api_key_here" >> .env
+# .env 파일에서 API 키 설정 (Gemini 또는 OpenAI)
 ```
 
-### 3. 서버 실행
-
-#### 개발 환경 (권장)
+### 3. 실행
 ```bash
-# Makefile 사용 - 백엔드와 프론트엔드 동시 실행
+# 개발 서버 (API + Streamlit)
 make dev
 
 # 또는 개별 실행
-make api      # 백엔드만 실행 (포트 8000)
-make client   # 프론트엔드만 실행 (포트 8501)
-```
-
-#### 수동 실행
-```bash
-# 백엔드 서버 (필수)
-python -m app.main
-
-# 프론트엔드 클라이언트 (별도 터미널)
-streamlit run streamlit_client.py
+python -m app.main  # API 서버
+streamlit run streamlit_client.py  # 웹 UI
 ```
 
 ### 4. 접속
-- **프론트엔드**: http://localhost:8501
+- **웹 UI**: http://localhost:8501
 - **API 문서**: http://localhost:8000/docs
-- **헬스체크**: http://localhost:8000/health
 
-## 📋 사용 가이드
+## 🏗️ 아키텍처
 
-### 1. 시스템 초기화
-1. 웹 브라우저에서 프론트엔드 접속
-2. 사이드바에서 "🚀 시스템 초기화" 클릭
-3. "📄 샘플 문서 추가"로 법률 문서 로드
-
-### 2. 법률 상담 사용
-- **예시 질문**: 미리 준비된 버튼 클릭
-- **직접 질문**: 텍스트 영역에 질문 입력 후 전송
-
-### 3. 지원 법률 분야
-- 🏠 **주택임대차**: 전세, 월세, 보증금 등
-- 💼 **근로관계**: 부당해고, 임금, 퇴직 등
-- ⚖️ **민사분쟁**: 손해배상, 계약 위반 등
-
-## 🔗 API 엔드포인트
-
-### 기본 엔드포인트
-```bash
-GET  /health        # 서버 상태 확인
-GET  /status        # 시스템 상태 조회
-POST /query         # 법률 질문 처리
-POST /rebuild       # 인덱스 재구축
+```
+사용자 질문 → LangChain Memory → 하이브리드 검색 → Gemini 답변 생성 → Memory 업데이트
+     ↓              ↓                ↓              ↓                ↓
+   의도 분석    맥락 이해 & 보강    문서 검색     전문 답변         대화 기록
 ```
 
-### API 사용 예시
+### 주요 컴포넌트
+- **RAG Orchestrator**: 전체 시스템 조율
+- **LangChain RAG Service**: Gemini 기반 질문 분류 및 답변 생성
+- **Hybrid Search**: BM25 + 벡터 검색 결합
+- **Vector Store**: ChromaDB 기반 벡터 데이터베이스
+- **Law API Collector**: 법제처 API를 통한 법률 문서 수집
+- **Memory Management**: LangChain ConversationBufferWindowMemory
+
+## 🔧 설정
+
+### 환경 변수 (.env)
+```bash
+# AI 모델 설정 (둘 중 하나 또는 둘 다)
+GEMINI_API_KEY=your_gemini_api_key
+GEMINI_MODEL=gemini-2.5-flash
+OPENAI_API_KEY=your_openai_api_key
+OPENAI_MODEL=gpt-4o
+TEMPERATURE=0.5
+
+# 서버 설정
+APP_NAME=Law Mate API
+APP_VERSION=1.0.0
+LOG_LEVEL=INFO
+DEBUG=false
+API_HOST=0.0.0.0
+API_PORT=8000
+STREAMLIT_PORT=8501
+
+# 벡터 DB 설정
+VECTOR_DB_PATH=./vectordb
+COLLECTION_NAME=law_documents
+EMBEDDING_MODEL=jhgan/ko-sroberta-multitask
+
+# 검색 설정
+CHUNK_SIZE=1000
+CHUNK_OVERLAP=200
+TOP_K_DOCUMENTS=5
+BM25_WEIGHT=0.3
+VECTOR_WEIGHT=0.7
+SIMILARITY_THRESHOLD=0.7
+
+# 법제처 API 설정
+LAW_API_USER_ID=your_law_api_user_id
+
+# 스케줄러 설정
+ENABLE_SCHEDULER=true
+
+# 로깅 설정
+LOG_FILE=logs/law_mate_api.log
+```
+
+## 🛠️ 개발 명령어
+
+```bash
+# 개발 환경 설정
+make setup
+
+# 개발 서버 실행
+make dev
+
+# API 서버만 실행
+make api
+
+# 웹 클라이언트만 실행
+make client
+
+# 코드 포맷팅
+make format
+
+# 린팅
+make lint
+
+# 정리
+make clean
+```
+
+## 📊 API 엔드포인트
+
+### 질의응답
+- `POST /api/v1/query` - 법률 질문 처리
+
+### 헬스체크
+- `GET /api/v1/health` - 헬스체크
+
+### 관리 기능
+- `GET /api/v1/admin/status` - 시스템 상태 조회
+- `POST /api/v1/admin/rebuild-indexes` - 검색 인덱스 재구축
+- `GET /api/v1/admin/config` - 설정 정보 조회 (디버그용)
+
+## 🎯 사용 예시
+
+### Python API 클라이언트
+```python
+import httpx
+
+async with httpx.AsyncClient() as client:
+    response = await client.post(
+        "http://localhost:8000/api/v1/query",
+        json={
+            "query": "전세 계약 시 주의사항이 뭔가요?",
+            "session_id": "user123"
+        }
+    )
+    result = response.json()
+    print(result["answer"])
+```
+
+### Curl
 ```bash
 curl -X POST "http://localhost:8000/api/v1/query" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "query": "전세보증금을 돌려받지 못하고 있어요",
-    "user_id": "user123",
-    "session_id": "session456"
-  }'
+     -H "Content-Type: application/json" \
+     -d '{"query": "부당해고 시 대응 방법은?", "session_id": "user123"}'
 ```
 
-## 💡 응답 구조
+## 🔍 특징
+
+### LangChain 기반 메모리 시스템
+- ConversationBufferWindowMemory로 최근 10개 메시지 기억
+- 세션별 독립적 대화 맥락 관리
+- 후속 질문 자동 감지 및 처리
+- 주제 변경 인식 및 대응
+
+### 하이브리드 검색
+- BM25 키워드 검색 (30% 가중치)
+- 벡터 의미 검색 (70% 가중치)
+- 한국어 최적화 임베딩 모델 (jhgan/ko-sroberta-multitask)
+- 검색 결과 융합 및 관련도 기반 랭킹
+
+### 법제처 API 연동
+- 실시간 법률 문서 수집
+- 키워드 기반 법령 검색
+- 자동 문서 파싱 및 인덱싱
+- API 상태 모니터링
+
+### 견고한 시스템
+- AI API 실패 시 폴백 메커니즘
+- 환경별 설정 관리 (.env.dev, .env.prod, .env.test)
+- 세션 기반 대화 관리
+- 실시간 시스템 모니터링
+- 자동 인덱스 재구축 스케줄링
+
+## 🤖 AI 모델 지원
+
+### Google Gemini (기본)
+- **모델**: gemini-2.5-flash
+- **장점**: 빠른 응답, 한국어 지원 우수, 비용 효율적
+- **용도**: 일반적인 법률 상담
+
+### OpenAI GPT (선택)
+- **모델**: gpt-4o
+- **장점**: 높은 정확도, 복잡한 추론
+- **용도**: 고도의 법률 분석 필요 시
+
+## 📁 프로젝트 구조
 
 ```
-📋 요약
-- 질문의 핵심 내용 요약
-
-📖 상세 답변
-- 법률적 근거와 상세 설명
-
-⚖️ 관련 법령
-- 해당 법률 조항
-
-💡 권장사항
-- 구체적 행동 지침
-
-⚠️ 주의사항
-- 고려사항
-
-📊 메타 정보
-- 신뢰도, 참조 문서, 처리 시간
+law_mate/
+├── api/                    # FastAPI 라우터 및 스키마
+│   ├── schemas/           # 요청/응답 모델
+│   └── v1/endpoints/      # API 엔드포인트
+├── app/                   # 애플리케이션 진입점
+├── core/                  # 핵심 설정 및 로깅
+├── services/              # 비즈니스 로직
+│   ├── llm/              # AI 모델 서비스
+│   ├── rag/              # RAG 오케스트레이터
+│   ├── search/           # 하이브리드 검색
+│   ├── document/         # 문서 처리
+│   └── collector/        # 법제처 API 수집
+├── infrastructure/        # 인프라 계층
+│   └── database/         # 벡터 데이터베이스
+├── data/                 # 샘플 법률 문서
+└── streamlit_client.py   # 웹 UI
 ```
 
-## 🔧 개발 도구
+## 🚦 상태 모니터링
 
-### Makefile 명령어
+시스템 상태는 다음 명령으로 확인할 수 있습니다:
+
 ```bash
-make setup      # 초기 환경 설정
-make dev        # 개발 서버 실행 (병렬)
-make api        # 백엔드만 실행
-make client     # 프론트엔드만 실행
-make tree       # 프로젝트 구조 확인
-make clean      # 캐시 정리
+curl http://localhost:8000/api/v1/admin/status
 ```
 
-### 로그 확인
-```bash
-# API 서버 로그
-tail -f logs/law_mate_api.log
-
-# 실시간 로그 모니터링
-make logs
+응답 예시:
+```json
+{
+  "status": "healthy",
+  "rag_initialized": true,
+  "document_count": 150,
+  "search_method": "하이브리드 검색",
+  "conversation_stats": {
+    "total_sessions": 10,
+    "active_sessions": 5
+  }
+}
 ```
 
-## ⚠️ 주의사항
+## 🔄 환경별 설정
 
-1. **법률 자문 한계**: 일반적인 법률 정보 제공 목적이며, 개별 사안 법률 자문을 대체하지 않습니다.
-2. **전문가 상담 권고**: 복잡한 법률 문제는 반드시 전문 변호사와 상담하세요.
-3. **정보 정확성**: AI 생성 정보이므로 최신 법령 변경사항이 반영되지 않을 수 있습니다.
+### 개발 환경 (.env.dev)
+- DEBUG=true
+- LOG_LEVEL=DEBUG
+- ENABLE_SCHEDULER=false
 
-## 🔍 문제 해결
+### 프로덕션 환경 (.env.prod)
+- DEBUG=false
+- LOG_LEVEL=WARNING
+- ENABLE_SCHEDULER=true
 
-### 서버 연결 실패
-```bash
-# 서버 상태 확인
-make status
+### 테스트 환경 (.env.test)
+- VECTOR_DB_PATH=./vectordb_test
+- LOG_LEVEL=DEBUG
 
-# 서버 재시작
-make restart
-```
+## 📝 라이선스
 
-### 벡터DB 오류
-```bash
-# 데이터베이스 초기화
-rm -rf vectordb/
-# 프론트엔드에서 "시스템 초기화" 재실행
-```
+MIT License
 
-## 📈 확장 가능성
+## 🤝 기여
 
-- **문서 확장**: 더 많은 법률 문서 추가
-- **다국어 지원**: 영어, 중국어 등 지원
-- **전문 분야**: 특허법, 세법 등 특화
-- **API 확장**: 외부 서비스 연동
-- **음성 인터페이스**: STT/TTS 기능
-
-## 📄 라이선스
-
-MIT 라이선스 하에 배포됩니다.
+이슈와 PR을 환영합니다!
 
 ---
 
-**⚖️ Law Mate**: 모든 사람이 쉽게 접근할 수 있는 AI 법률 상담 서비스 
+**Law Mate** - 당신의 믿을 수 있는 AI 법률 상담사 🏛️⚖️ 

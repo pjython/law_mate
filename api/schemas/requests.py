@@ -12,7 +12,7 @@ class QueryRequest(BaseModel):
 
     query: str = Field(..., description="법률 질문", min_length=1, max_length=1000)
     user_id: Optional[str] = Field(None, description="사용자 ID")
-    session_id: Optional[str] = Field(None, description="세션 ID")
+    session_id: Optional[str] = Field(None, description="세션 ID (없으면 새 세션 생성)")
 
     class Config:
         json_schema_extra = {
@@ -23,8 +23,7 @@ class QueryRequest(BaseModel):
 class RebuildRequest(BaseModel):
     """인덱스 재구축 요청 모델"""
 
-    force: bool = Field(default=False, description="강제 재구축 여부")
     backup: bool = Field(default=True, description="기존 인덱스 백업 여부")
 
     class Config:
-        json_schema_extra = {"example": {"force": True, "backup": True}}
+        json_schema_extra = {"example": {"backup": True}}
