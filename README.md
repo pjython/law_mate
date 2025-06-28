@@ -13,13 +13,6 @@ Law Mate는 Google Gemini와 OpenAI GPT를 활용한 전문 법률 상담 AI입�
 - **실시간 대화**: 세션 기반 연속 대화 지원
 - **법제처 API 연동**: 실시간 법률 문서 수집 및 업데이트
 
-### 법률 분야
-- 부동산 (임대차, 전세, 매매)
-- 근로/노동 (해고, 임금, 근로계약)
-- 민사 (계약, 손해배상, 채무)
-- 가족법 (이혼, 상속, 양육)
-- 형사법 (고발, 신고, 범죄)
-
 ## 📋 시스템 요구사항
 
 - Python 3.10+
@@ -60,14 +53,14 @@ streamlit run streamlit_client.py  # 웹 UI
 ## 🏗️ 아키텍처
 
 ```
-사용자 질문 → LangChain Memory → 하이브리드 검색 → Gemini 답변 생성 → Memory 업데이트
+사용자 질문 → LangChain Memory → 하이브리드 검색 → LLM 답변 생성 → Memory 업데이트
      ↓              ↓                ↓              ↓                ↓
    의도 분석    맥락 이해 & 보강    문서 검색     전문 답변         대화 기록
 ```
 
 ### 주요 컴포넌트
 - **RAG Orchestrator**: 전체 시스템 조율
-- **LangChain RAG Service**: Gemini 기반 질문 분류 및 답변 생성
+- **LangChain RAG Service**: LLM 기반 질문 분류 및 답변 생성
 - **Hybrid Search**: BM25 + 벡터 검색 결합
 - **Vector Store**: ChromaDB 기반 벡터 데이터베이스
 - **Law API Collector**: 법제처 API를 통한 법률 문서 수집
