@@ -9,7 +9,7 @@ from typing import List, Dict, Any, Optional
 import json
 import asyncio
 
-# from langchain_openai import ChatOpenAI
+from langchain_openai import ChatOpenAI
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.prompts import ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate
 from langchain_core.output_parsers import StrOutputParser, BaseOutputParser
@@ -78,16 +78,23 @@ class LangChainRAGService:
         self.settings = get_settings()
 
         # ChatOpenAI 초기화
-        # if self.settings.OPENAI_API_KEY:
-        #     self.llm = ChatOpenAI(
-        #         api_key=self.settings.OPENAI_API_KEY,
-        #         model=self.settings.OPENAI_MODEL,
-        #         temperature=self.settings.TEMPERATURE,
-        #         max_tokens=1500,
-        #         streaming=False
-        #     )
-        #     logger.info("✅ LangChain ChatOpenAI 초기화 완료")
-        if self.settings.GEMINI_API_KEY:
+        if self.settings.OPENAI_API_KEY:
+            self.classification_llm = ChatOpenAI(
+                api_key=self.settings.OPENAI_API_KEY,
+                model=self.settings.OPENAI_MODEL,
+                temperature=self.settings.TEMPERATURE,
+                max_tokens=1500,
+                streaming=False,
+            )
+            self.answer_llm = ChatOpenAI(
+                api_key=self.settings.OPENAI_API_KEY,
+                model=self.settings.OPENAI_MODEL,
+                temperature=self.settings.TEMPERATURE,
+                max_tokens=1500,
+                streaming=False,
+            )
+            logger.info("✅ LangChain ChatOpenAI 초기화 완료")
+        elif self.settings.GEMINI_API_KEY:
             self.classification_llm = ChatGoogleGenerativeAI(
                 model=self.settings.GEMINI_MODEL,
                 google_api_key=self.settings.GEMINI_API_KEY,
